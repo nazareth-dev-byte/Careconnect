@@ -1,6 +1,7 @@
+import './careconnect.css'
 import { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
-import Login from './Login'
+import Login from './components/Login'
 import Sidebar from './components/Sidebar'
 import Dashboard from './components/Dashboard'
 import NewPatient from './components/NewPatient'
@@ -27,6 +28,10 @@ export default function App() {
     return () => subscription.unsubscribe()
   }, [])
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+  }
+
   if (loading) return <div>Loading...</div>
 
   if (!session) {
@@ -34,9 +39,9 @@ export default function App() {
   }
 
   return (
-    <div className="app-container">
-      <Sidebar activeScreen={activeScreen} setActiveScreen={setActiveScreen} />
-      <main className="content">
+    <div className="app-layout">
+      <Sidebar activeScreen={activeScreen} setActiveScreen={setActiveScreen} onLogout={handleLogout} />
+      <main className="main">
         {activeScreen === 'dashboard' && <Dashboard />}
         {activeScreen === 'new-patient' && <NewPatient />}
         {activeScreen === 'appointments' && <Appointments />}
