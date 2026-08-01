@@ -1,4 +1,4 @@
-import './careconnect.css'
+import './CareConnect.css'
 import { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
 import Login from './components/Login'
