@@ -1,0 +1,13 @@
+/* Minimal reset only -- CareConnect.css owns all real styling.
+   (The previous version of this file was still the default Vite/React
+   starter template's CSS -- it set #root to a centered 1126px column
+   with a border, which fought the sidebar+main grid layout on every
+   screen. That's removed.) */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
