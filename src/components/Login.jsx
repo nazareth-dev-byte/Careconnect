@@ -46,13 +46,12 @@ export default function Login() {
       alignItems: 'center',
       justifyContent: 'center',
       minHeight: '100vh',
-      backgroundColor: '#f3f4f6',
-      fontFamily: 'system-ui, -apple-system, sans-serif'
+      backgroundColor: 'var(--paper)',
     }}>
       <div className="panel" style={{ width: '100%', maxWidth: '400px', padding: '32px' }}>
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <h1 style={{ fontSize: '24px', margin: '0 0 8px 0', color: '#111827' }}>
-            Care<span style={{ color: '#0ea5e9' }}>Connect</span>
+          <h1 style={{ fontSize: '24px', margin: '0 0 8px 0' }}>
+            Care<span style={{ color: 'var(--teal)' }}>Connect</span>
           </h1>
           <div className="panel-sub" style={{ margin: 0 }}>Clinic System Access</div>
         </div>
@@ -92,10 +91,10 @@ export default function Login() {
               style={{ width: '100%', padding: '10px', boxSizing: 'border-box' }}
             />
           </div>
-          
-          <button 
-            type="submit" 
-            className="btn primary" 
+
+          <button
+            type="submit"
+            className="btn primary"
             disabled={loading}
             style={{ width: '100%', padding: '12px', marginTop: '8px', justifyContent: 'center' }}
           >
@@ -104,7 +103,7 @@ export default function Login() {
         </form>
 
         <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '14px' }}>
-          <span style={{ color: '#6b7280' }}>
+          <span style={{ color: 'var(--muted)' }}>
             {isLogin ? "Don't have an account? " : "Already have an account? "}
           </span>
           <button
@@ -116,7 +115,7 @@ export default function Login() {
             style={{
               background: 'none',
               border: 'none',
-              color: '#0ea5e9',
+              color: 'var(--teal)',
               cursor: 'pointer',
               fontWeight: '600',
               padding: 0
