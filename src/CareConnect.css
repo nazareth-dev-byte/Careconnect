@@ -529,7 +529,19 @@ tbody tr:last-child td { border-bottom: none; }
     gap: 10px;
     padding: 14px 16px;
   }
-  .brand-sub, .sidebar-foot { display: none; }
+  .brand-sub { display: none; }
+
+.sidebar-foot {
+  display: block;
+  margin-top: 12px;
+  padding-top: 12px;
+  width: 100%;
+}
+
+.sidebar-foot > div:first-child,
+.sidebar-foot > div:nth-child(2) {
+  display: none;
+}
   .nav-item { padding: 8px 10px; font-size: 13px; }
 
   .main { padding: 18px 16px 30px; }
