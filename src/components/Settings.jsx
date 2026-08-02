@@ -334,7 +334,7 @@ export default function Settings({ role }) {
               <tbody>
                 {profilesList.map((p) => (
                   <tr key={p.id}>
-                    <td style={{ fontSize: 12.5 }}>{rosterLabel(p)}<div style={{ fontSize: 10.5, color: 'var(--muted)' }}>{p.id}</div></td>
+                    <td style={{ fontSize: 12.5 }}>{p.email || rosterLabel(p)}</td>
                     <td>
                       <select value={p.role} onChange={(e) => handleSetRole(p.id, e.target.value)} disabled={isSaving}>
                         {ASSIGNABLE_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
