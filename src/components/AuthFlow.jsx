@@ -28,7 +28,7 @@ export default function AuthFlow({ onAuthed }) {
     if (existing) return existing
     const { data: created, error: createErr } = await supabase
       .from('profiles')
-      .insert([{ id: userId, role: 'Patient' }])
+      .insert([{ id: userId, role: 'Patient', email: (await supabase.auth.getUser()).data.user.email }])
       .select()
       .single()
     if (createErr) throw createErr
