@@ -4,7 +4,7 @@ import { supabase } from '../../supabaseClient'
 export default function CompleteProfile({ userId, onDone }) {
   const [form, setForm] = useState({
     first_name: '', last_name: '', date_of_birth: '', gender: 'Female',
-    phone_number: '', address: '', insurance_provider: '',
+    phone: '', address: '', insurance_provider: '',
   })
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -63,7 +63,7 @@ export default function CompleteProfile({ userId, onDone }) {
           </div>
         </div>
         <div className="row">
-          <div className="field"><label>Mobile number <span className="req">*</span></label><input required value={form.phone_number} onChange={set('phone_number')} /></div>
+          <div className="field"><label>Mobile number <span className="req">*</span></label><input required value={form.phone} onChange={set('phone')} /></div>
           <div className="field"><label>Insurance provider <span className="opt">(optional)</span></label><input value={form.insurance_provider} onChange={set('insurance_provider')} /></div>
         </div>
         <div className="row">
