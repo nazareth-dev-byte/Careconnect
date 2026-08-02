@@ -17,12 +17,11 @@ export default function CompleteProfile({ userId, onDone }) {
     setError('')
 
     const { data: { user } } = await supabase.auth.getUser()
+    const newId = crypto.randomUUID()
 
-    const { data: patient, error: insertError } = await supabase
+    const { error: insertError } = await supabase
       .from('patients')
-      .insert([{ ...form, email: user.email }])
-      .select()
-      .single()
+      .insert([{ id: newId, ...form, email: user.email }])
 
     if (insertError) {
       setError(insertError.message)
@@ -32,7 +31,7 @@ export default function CompleteProfile({ userId, onDone }) {
 
     const { error: linkError } = await supabase
       .from('profiles')
-      .update({ patient_id: patient.id })
+      .update({ patient_id: newId })
       .eq('id', userId)
 
     setSaving(false)
@@ -48,7 +47,6 @@ export default function CompleteProfile({ userId, onDone }) {
           One-time step so your clinician has the basics on file.
         </p>
         {error && <div className="hint error" style={{ marginBottom: 12 }}>{error}</div>}
-
         <div className="row">
           <div className="field"><label>First name <span className="req">*</span></label><input required value={form.first_name} onChange={set('first_name')} /></div>
           <div className="field"><label>Last name <span className="req">*</span></label><input required value={form.last_name} onChange={set('last_name')} /></div>
@@ -69,7 +67,6 @@ export default function CompleteProfile({ userId, onDone }) {
         <div className="row">
           <div className="field full"><label>Address <span className="opt">(optional)</span></label><input value={form.address} onChange={set('address')} /></div>
         </div>
-
         <div className="actions">
           <button type="submit" className="btn primary" disabled={saving}>{saving ? 'Saving…' : 'Save profile'}</button>
         </div>
