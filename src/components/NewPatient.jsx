@@ -41,7 +41,7 @@ export default function NewPatient({ onNavigate }) {
           last_name: lastName,
           date_of_birth: formData.dateOfBirth || null,
           gender: formData.gender.toLowerCase(),
-          phone_number: formData.phoneNumber,
+          phone: formData.phoneNumber,
           email: formData.email || null,
           address: formData.address || null,
           insurance_provider: provider
