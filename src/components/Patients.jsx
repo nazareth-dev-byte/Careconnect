@@ -34,7 +34,7 @@ export default function Patients({ onAddPatientClick }) {
   const filteredPatients = patients.filter(p => {
     const fullName = `${p.first_name} ${p.last_name}`.toLowerCase()
     const matchesSearch = fullName.includes(searchTerm.toLowerCase()) || 
-                          (p.phone_number && p.phone_number.includes(searchTerm))
+                          (p.phone && p.phone.includes(searchTerm))
     
     return matchesSearch
   })
@@ -126,7 +126,7 @@ export default function Patients({ onAddPatientClick }) {
                       <td><b>{displayId}</b></td>
                       <td style={{ fontWeight: '500' }}>{p.first_name} {p.last_name}</td>
                       <td>{genderDisplay}{age ? `, ${age}` : ''}</td>
-                      <td>{p.phone_number || '—'}</td>
+                      <td>{p.phone || '—'}</td>
                       <td>—</td>
                       <td>{p.insurance_provider || 'Self-Pay'}</td>
                       <td><button type="button" className="btn secondary" style={{ padding: '4px 10px', fontSize: 12 }}>Record</button></td>
