@@ -497,6 +497,105 @@ tbody tr:last-child td { border-bottom: none; }
 .no-show { color: var(--red); font-weight: 600; }
 .completed { color: var(--teal); font-weight: 600; }
 
+.notif-wrap {
+  position: relative;
+  margin: 10px 0 4px;
+}
+
+.notif-bell {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.08);
+  border: none;
+  color: #eaf3f1;
+  font-size: 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notif-bell:hover {
+  background: rgba(255,255,255,0.16);
+}
+
+.notif-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: var(--red);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notif-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+
+.notif-panel {
+  position: absolute;
+  top: 42px;
+  left: 0;
+  width: 300px;
+  max-height: 360px;
+  overflow-y: auto;
+  background: #fff;
+  color: var(--ink);
+  border-radius: 12px;
+  box-shadow: 0 20px 46px -14px rgba(10,30,26,.4);
+  z-index: 41;
+}
+
+.notif-panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.notif-mark-all {
+  background: none;
+  border: none;
+  color: var(--teal);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.notif-empty {
+  padding: 20px 14px;
+  font-size: 12.5px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.notif-item {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+}
+
+.notif-item:last-child { border-bottom: none; }
+.notif-item:hover { background: var(--chip-bg); }
+.notif-item.unread { background: #f2f8f6; }
+.notif-item .notif-title { font-size: 12.5px; font-weight: 700; }
+.notif-item .notif-body { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+
 .row-actions {
   display: flex;
   gap: 6px;
