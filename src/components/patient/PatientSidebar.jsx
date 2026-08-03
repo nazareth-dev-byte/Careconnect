@@ -1,5 +1,5 @@
 import React from 'react'
-import NotificationBell from './NotificationBell'
+import NotificationBell from '../NotificationBell'
 
 const NAV_ITEMS = [
   { key: 'home', label: 'Home' },
