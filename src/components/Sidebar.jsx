@@ -1,5 +1,6 @@
 import React from 'react'
 import { supabase } from '../supabaseClient'
+import NotificationBell from './NotificationBell'
 
 const NAV_ITEMS_ALL = [
   { key: 'dashboard', label: 'Dashboard', roles: ['Doctor', 'Admin', 'Receptionist'] },
@@ -10,7 +11,7 @@ const NAV_ITEMS_ALL = [
   { key: 'settings', label: 'Settings', roles: ['Doctor', 'Admin', 'Receptionist'] },
 ]
 
-export default function Sidebar({ activeScreen, setActiveScreen, onLogout, role }) {
+export default function Sidebar({ activeScreen, setActiveScreen, onLogout, role, profileId }) {
   const items = NAV_ITEMS_ALL.filter((item) => item.roles.includes(role))
 
   const handleLogout = async () => {
@@ -22,6 +23,7 @@ export default function Sidebar({ activeScreen, setActiveScreen, onLogout, role 
     <aside className="sidebar">
       <div className="brand">Care<span>Connect</span></div>
       <div className="brand-sub">Clinic System</div>
+      <NotificationBell profileId={profileId} role={role} />
 
       {items.map((item) => (
         <div
