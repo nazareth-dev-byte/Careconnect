@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../../supabaseClient'
+import { notifyReminderIfDue } from '../../notify'
 
 export default function PatientHome({ patientId }) {
   const [next, setNext] = useState(null)
@@ -16,8 +17,10 @@ export default function PatientHome({ patientId }) {
         .gte('appointment_date', today)
         .order('appointment_date', { ascending: true })
         .limit(1)
-      setNext(data && data[0])
+      const nextAppt = data && data[0]
+      setNext(nextAppt)
       setLoading(false)
+      if (nextAppt) notifyReminderIfDue(nextAppt)
     })()
   }, [patientId])
 
