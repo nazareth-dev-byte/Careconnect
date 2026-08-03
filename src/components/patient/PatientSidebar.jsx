@@ -1,4 +1,5 @@
 import React from 'react'
+import NotificationBell from './NotificationBell'
 
 const NAV_ITEMS = [
   { key: 'home', label: 'Home' },
@@ -7,11 +8,12 @@ const NAV_ITEMS = [
   { key: 'records', label: 'My Records' },
 ]
 
-export default function PatientSidebar({ activeScreen, setActiveScreen, onLogout }) {
+export default function PatientSidebar({ activeScreen, setActiveScreen, onLogout, profileId }) {
   return (
     <aside className="sidebar">
       <div className="brand">Care<span>Connect</span></div>
       <div className="brand-sub">Patient Portal</div>
+      <NotificationBell profileId={profileId} role="Patient" />
 
       {NAV_ITEMS.map((item) => (
         <div
