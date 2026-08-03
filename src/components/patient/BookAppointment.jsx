@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../../supabaseClient'
+import { notifyBookingConfirmation } from '../../notify'
 
 export default function BookAppointment({ patientId }) {
   const [doctors, setDoctors] = useState([])
@@ -16,16 +17,25 @@ export default function BookAppointment({ patientId }) {
 
   const submit = async () => {
     setBusy(true); setMsg(null)
-    const { error } = await supabase.from('appointments').insert([{
+    const { data: inserted, error } = await supabase.from('appointments').insert([{
       patient_id: patientId, doctor_id: doctorId, appointment_date: date,
       appointment_time: time, duration_minutes: 30, reason_for_visit: reason, status: 'Scheduled',
-    }])
+    }]).select().single()
     setBusy(false)
     if (error) {
       // Friendlier message for the DB's double-booking constraint, raw message otherwise.
       const isConflict = /duplicate|conflict|constraint/i.test(error.message)
       setMsg({ type: 'error', text: isConflict ? 'That doctor already has an appointment at this exact date and time. Pick another time.' : error.message })
     } else {
+      const doc = doctors.find((d) => d.id === doctorId)
+      notifyBookingConfirmation({
+        appointmentId: inserted.id,
+        patientId,
+        doctorId,
+        doctorName: doc ? `${doc.first_name} ${doc.last_name}` : undefined,
+        date,
+        time,
+      })
       setMsg({ type: 'ok', text: 'Appointment booked.' })
       setTime(''); setReason('')
     }
