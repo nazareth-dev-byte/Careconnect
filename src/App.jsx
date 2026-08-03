@@ -68,7 +68,7 @@ export default function App() {
     }
     return (
       <div className="app-layout">
-        <PatientSidebar activeScreen={patientScreen} setActiveScreen={setPatientScreen} onLogout={handleLogout} />
+        <PatientSidebar activeScreen={patientScreen} setActiveScreen={setPatientScreen} onLogout={handleLogout} profileId={profile.id} />
         <main className="main">
           {patientScreen === 'home' && <PatientHome patientId={profile.patient_id} />}
           {patientScreen === 'book' && <BookAppointment patientId={profile.patient_id} />}
@@ -94,11 +94,11 @@ export default function App() {
     const isBackOffice = BACK_OFFICE_ROLES.includes(profile.role)
     return (
       <div className="app-layout">
-        <Sidebar activeScreen={staffScreen} setActiveScreen={setStaffScreen} onLogout={handleLogout} role={profile.role} />
+        <Sidebar activeScreen={staffScreen} setActiveScreen={setStaffScreen} onLogout={handleLogout} role={profile.role} profileId={profile.id} />
         <main className="main">
           {staffScreen === 'dashboard' && <Dashboard />}
           {staffScreen === 'new-patient' && isBackOffice && <NewPatient onNavigate={setStaffScreen} />}
-          {staffScreen === 'appointments' && <Appointments />}
+          {staffScreen === 'appointments' && <Appointments role={profile.role} doctorId={profile.doctor_id} />}
           {staffScreen === 'patients' && isBackOffice && <Patients onAddPatientClick={() => setStaffScreen('new-patient')} />}
           {staffScreen === 'reports' && isBackOffice && <Reports />}
           {staffScreen === 'settings' && <Settings role={profile.role} />}
