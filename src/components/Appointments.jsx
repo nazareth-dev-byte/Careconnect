@@ -40,6 +40,13 @@ export default function Appointments() {
   const [formError, setFormError] = useState('')
   const [isSaving, setIsSaving] = useState(false)
 
+  const [completeTarget, setCompleteTarget] = useState(null)
+  const [diagnosis, setDiagnosis] = useState('')
+  const [treatmentPlan, setTreatmentPlan] = useState('')
+  const [rxLines, setRxLines] = useState([{ medication_name: '', dosage: '', frequency: '' }])
+  const [completeError, setCompleteError] = useState('')
+  const [completeSaving, setCompleteSaving] = useState(false)
+
   const fetchAppointments = async () => {
     setLoading(true)
     setError(null)
@@ -187,6 +194,80 @@ export default function Appointments() {
     fetchAppointments()
   }
 
+  const openComplete = (appt) => {
+    setCompleteTarget(appt)
+    setDiagnosis('')
+    setTreatmentPlan('')
+    setRxLines([{ medication_name: '', dosage: '', frequency: '' }])
+    setCompleteError('')
+  }
+
+  const closeComplete = () => setCompleteTarget(null)
+
+  const updateRxLine = (idx, field, value) => {
+    setRxLines((prev) => prev.map((line, i) => (i === idx ? { ...line, [field]: value } : line)))
+  }
+
+  const addRxLine = () => setRxLines((prev) => [...prev, { medication_name: '', dosage: '', frequency: '' }])
+
+  const removeRxLine = (idx) => setRxLines((prev) => prev.filter((_, i) => i !== idx))
+
+  const submitComplete = async () => {
+    setCompleteError('')
+    const validRx = rxLines.filter((r) => r.medication_name.trim())
+
+    if (!diagnosis.trim()) { setCompleteError('Diagnosis is required.'); return }
+    if (validRx.length === 0) { setCompleteError('Add at least one prescription line.'); return }
+
+    setCompleteSaving(true)
+
+    const { data: record, error: recordError } = await supabase
+      .from('medical_records')
+      .insert([{
+        appointment_id: completeTarget.id,
+        diagnosis: diagnosis.trim(),
+        treatment_plan: treatmentPlan.trim() || null,
+      }])
+      .select()
+      .single()
+
+    if (recordError) {
+      setCompleteSaving(false)
+      setCompleteError(recordError.message)
+      return
+    }
+
+    const { error: rxError } = await supabase
+      .from('prescriptions')
+      .insert(validRx.map((r) => ({
+        record_id: record.id,
+        medication_name: r.medication_name.trim(),
+        dosage: r.dosage.trim() || null,
+        frequency: r.frequency.trim() || null,
+      })))
+
+    if (rxError) {
+      setCompleteSaving(false)
+      setCompleteError(rxError.message)
+      return
+    }
+
+    const { error: statusError } = await supabase
+      .from('appointments')
+      .update({ status: 'Completed' })
+      .eq('id', completeTarget.id)
+
+    setCompleteSaving(false)
+
+    if (statusError) {
+      setCompleteError(statusError.message)
+      return
+    }
+
+    setCompleteTarget(null)
+    fetchAppointments()
+  }
+
   const todayStr = new Date().toLocaleDateString('en-CA')
 
   const filteredAppointments = appointments.filter((a) => {
@@ -221,7 +302,7 @@ export default function Appointments() {
           <h1>Appointments</h1>
           <div className="sub">Book, reschedule, and manage the clinic's appointment queue</div>
         </div>
-        <button type="button" className="btn btn-primary" onClick={() => setShowModal(true)}>
+        <button type="button" className="btn primary" onClick={() => setShowModal(true)}>
           + New Appointment
         </button>
       </div>
@@ -300,6 +381,9 @@ export default function Appointments() {
                       <td><span className={`status ${a.status?.toLowerCase() || 'scheduled'}`}>{a.status || 'Scheduled'}</span></td>
                       <td>
                         <div className="row-actions">
+                          {a.status !== 'Completed' && a.status !== 'Cancelled' && (
+                            <div className="icon-btn" title="Complete Visit" onClick={() => openComplete(a)}>✓</div>
+                          )}
                           <div className="icon-btn" title="Cancel Appointment" onClick={() => handleCancelAppointment(a.id)}>✕</div>
                         </div>
                       </td>
@@ -442,8 +526,8 @@ export default function Appointments() {
             </div>
 
             <div className="modal-foot">
-              <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
-              <button className="btn btn-primary" onClick={handleSubmit} disabled={isSaving}>
+              <button className="btn secondary" onClick={() => setShowModal(false)}>Cancel</button>
+              <button className="btn primary" onClick={handleSubmit} disabled={isSaving}>
                 {isSaving ? 'Saving…' : 'Save Appointment'}
               </button>
             </div>
@@ -451,14 +535,77 @@ export default function Appointments() {
         </div>
       )}
 
+      {completeTarget && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <div className="modal-head">
+              <div>
+                <h2>Complete Visit</h2>
+                <p>
+                  {completeTarget.patients ? `${completeTarget.patients.first_name} ${completeTarget.patients.last_name}` : 'Patient'}
+                  {' — '}{completeTarget.appointment_date}
+                </p>
+              </div>
+              <button className="modal-close" onClick={closeComplete}>✕</button>
+            </div>
+
+            {completeError && <div className="form-error" style={{ display: 'block' }}>{completeError}</div>}
+
+            <div className="modal-body">
+              <div className="field-group">
+                <div className="group-label">Diagnosis</div>
+                <textarea rows={2} value={diagnosis} onChange={(e) => setDiagnosis(e.target.value)} placeholder="Required" />
+              </div>
+
+              <div className="field-group">
+                <div className="group-label">Treatment plan</div>
+                <textarea rows={2} value={treatmentPlan} onChange={(e) => setTreatmentPlan(e.target.value)} placeholder="Optional" />
+              </div>
+
+              <div className="field-group">
+                <div className="group-label">Prescriptions</div>
+                {rxLines.map((line, idx) => (
+                  <div key={idx} className="row3" style={{ marginBottom: 8, alignItems: 'end' }}>
+                    <div>
+                      <label>Medication</label>
+                      <input type="text" value={line.medication_name} onChange={(e) => updateRxLine(idx, 'medication_name', e.target.value)} />
+                    </div>
+                    <div>
+                      <label>Dosage</label>
+                      <input type="text" value={line.dosage} onChange={(e) => updateRxLine(idx, 'dosage', e.target.value)} />
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'end' }}>
+                      <div style={{ flex: 1 }}>
+                        <label>Frequency</label>
+                        <input type="text" value={line.frequency} onChange={(e) => updateRxLine(idx, 'frequency', e.target.value)} />
+                      </div>
+                      {rxLines.length > 1 && (
+                        <div className="icon-btn" title="Remove line" onClick={() => removeRxLine(idx)} style={{ marginBottom: 2 }}>✕</div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                <button type="button" className="btn secondary" style={{ padding: '5px 12px', fontSize: 12 }} onClick={addRxLine}>+ Add line</button>
+              </div>
+            </div>
+
+            <div className="modal-foot">
+              <button className="btn secondary" onClick={closeComplete}>Cancel</button>
+              <button className="btn primary" onClick={submitComplete} disabled={completeSaving}>
+                {completeSaving ? 'Saving…' : 'Complete Visit'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`
-        :root{--teal-deep:#146B63;--teal:#1c8577;--teal-soft:#e6f3f1;--ink:#1c2420;--muted:#6b7c78;--line:#e1e8e6;--paper:#ffffff;--bg:#f4f7f6;--danger:#b5432f;--danger-soft:#fdeeec;--ok:#2e7d32;--ok-soft:#eaf6ea;--radius:10px;}
         .tabs{display:flex;gap:8px;margin-bottom:20px;border-bottom:1px solid var(--line);}
         .tab{padding:8px 16px;font-size:13.5px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;user-select:none;}
         .tab.active{color:var(--teal-deep);border-bottom-color:var(--teal-deep);}
         .tab:hover{color:var(--ink);}
         .modal-overlay{position:fixed;inset:0;background:rgba(20,30,28,.45);display:flex;align-items:center;justify-content:center;z-index:100;}
-        .modal{background:var(--paper);width:560px;max-width:92vw;max-height:88vh;overflow-y:auto;border-radius:16px;box-shadow:0 24px 60px -12px rgba(10,30,26,.35);}
+        .modal{background:var(--panel);width:560px;max-width:92vw;max-height:88vh;overflow-y:auto;border-radius:16px;box-shadow:0 24px 60px -12px rgba(10,30,26,.35);}
         .modal-head{padding:24px 28px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-start;}
         .modal-head h2{margin:0 0 3px;font-size:19px;font-weight:700;}
         .modal-head p{margin:0;font-size:12.5px;color:var(--muted);}
@@ -467,10 +614,10 @@ export default function Appointments() {
         .modal-body{padding:22px 28px 6px;}
         .field-group{margin-bottom:18px;}
         .group-label{font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--teal-deep);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
-        label{display:block;font-size:12.5px;font-weight:600;color:var(--ink);margin-bottom:5px;}
+        .modal label{display:block;font-size:12.5px;font-weight:600;color:var(--ink);margin-bottom:5px;}
         .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
-        input[type=text],input[type=date],input[type=time],select,textarea{width:100%;border:1.5px solid var(--line);border-radius:8px;padding:9px 11px;font-size:13.5px;font-family:inherit;color:var(--ink);background:#fff;}
-        input:focus,select:focus,textarea:focus{outline:none;border-color:var(--teal);}
+        .modal input[type=text],.modal input[type=date],.modal input[type=time],.modal select,.modal textarea{width:100%;border:1.5px solid var(--line);border-radius:8px;padding:9px 11px;font-size:13.5px;font-family:inherit;color:var(--ink);background:#fff;}
+        .modal input:focus,.modal select:focus,.modal textarea:focus{outline:none;border-color:var(--teal);}
         .picker{position:relative;margin-bottom:8px;}
         .picker-results{position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid var(--line);border-radius:9px;box-shadow:0 10px 26px rgba(0,0,0,.1);max-height:180px;overflow-y:auto;z-index:5;}
         .picker-result{padding:9px 12px;font-size:13px;cursor:pointer;display:flex;justify-content:space-between;}
@@ -488,12 +635,6 @@ export default function Appointments() {
         .reason-chip:hover{border-color:var(--teal);color:var(--teal-deep);}
         .form-error{background:var(--danger-soft);color:var(--danger);border-radius:8px;padding:10px 13px;font-size:13px;margin:0 28px 14px;}
         .modal-foot{padding:16px 28px 24px;display:flex;justify-content:flex-end;gap:10px;border-top:1px solid var(--line);margin-top:6px;}
-        .btn{padding:10px 20px;border-radius:9px;font-size:13.5px;font-weight:600;cursor:pointer;border:1.5px solid transparent;}
-        .btn-secondary{background:#fff;border-color:var(--line);color:var(--muted);}
-        .btn-secondary:hover{background:var(--bg);}
-        .btn-primary{background:var(--teal-deep);color:#fff;}
-        .btn-primary:hover{background:#0f524c;}
-        .btn-primary:disabled{opacity:.6;cursor:default;}
       `}</style>
     </div>
   )
