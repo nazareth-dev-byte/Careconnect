@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
+import { notifyBookingConfirmation, notifyCancellation, notifyVisitComplete } from '../notify'
 
 const TABS = [
   { key: 'all', label: 'All' },
@@ -8,7 +9,8 @@ const TABS = [
   { key: 'cancelled', label: 'Cancelled' },
 ]
 
-export default function Appointments() {
+export default function Appointments({ role, doctorId }) {
+  const isDoctor = role === 'Doctor'
   const [activeTab, setActiveTab] = useState('all')
   const [appointments, setAppointments] = useState([])
   const [loading, setLoading] = useState(true)
@@ -50,7 +52,7 @@ export default function Appointments() {
   const fetchAppointments = async () => {
     setLoading(true)
     setError(null)
-    const { data, error: fetchErr } = await supabase
+    let query = supabase
       .from('appointments')
       .select(`
         *,
@@ -58,6 +60,10 @@ export default function Appointments() {
         doctors (id, first_name, last_name, specialization)
       `)
       .order('appointment_date', { ascending: true })
+
+    if (isDoctor && doctorId) query = query.eq('doctor_id', doctorId)
+
+    const { data, error: fetchErr } = await query
 
     if (fetchErr) {
       setError(fetchErr.message)
@@ -78,6 +84,7 @@ export default function Appointments() {
     const { data } = await supabase.from('doctors').select('id, first_name, last_name, specialization')
     if (data) setDoctorsList(data)
   }
+
 
   useEffect(() => {
     fetchAppointments()
@@ -156,7 +163,7 @@ export default function Appointments() {
 
     setIsSaving(true)
 
-    const { error: insertError } = await supabase
+    const { data: inserted, error: insertError } = await supabase
       .from('appointments')
       .insert([
         {
@@ -169,12 +176,22 @@ export default function Appointments() {
           status: 'Scheduled'
         }
       ])
+      .select()
+      .single()
 
     setIsSaving(false)
 
     if (insertError) {
       setFormError(insertError.message)
     } else {
+      notifyBookingConfirmation({
+        appointmentId: inserted.id,
+        patientId: selectedPatient.id,
+        doctorId: selectedDoctor.id,
+        doctorName: `${selectedDoctor.first_name} ${selectedDoctor.last_name}`,
+        date: apptDate,
+        time: apptTime,
+      })
       setShowModal(false)
       setSelectedPatient(null)
       setSelectedDoctor(null)
@@ -187,10 +204,14 @@ export default function Appointments() {
   }
 
   const handleCancelAppointment = async (id) => {
+    const target = appointments.find((a) => a.id === id)
     await supabase
       .from('appointments')
       .update({ status: 'Cancelled' })
       .eq('id', id)
+    if (target) {
+      notifyCancellation({ appointmentId: id, date: target.appointment_date, time: target.appointment_time?.slice(0, 5) })
+    }
     fetchAppointments()
   }
 
@@ -264,6 +285,8 @@ export default function Appointments() {
       return
     }
 
+    notifyVisitComplete({ appointmentId: completeTarget.id, patientId: completeTarget.patient_id })
+
     setCompleteTarget(null)
     fetchAppointments()
   }
@@ -302,7 +325,17 @@ export default function Appointments() {
           <h1>Appointments</h1>
           <div className="sub">Book, reschedule, and manage the clinic's appointment queue</div>
         </div>
-        <button type="button" className="btn primary" onClick={() => setShowModal(true)}>
+        <button
+          type="button"
+          className="btn primary"
+          onClick={() => {
+            if (isDoctor) {
+              const self = doctorsList.find((d) => d.id === doctorId)
+              if (self) setSelectedDoctor(self)
+            }
+            setShowModal(true)
+          }}
+        >
           + New Appointment
         </button>
       </div>
@@ -326,12 +359,14 @@ export default function Appointments() {
           value={searchFilter}
           onChange={(e) => setSearchFilter(e.target.value)}
         />
-        <select value={doctorFilter} onChange={(e) => setDoctorFilter(e.target.value)}>
-          <option value="All Doctors">All Doctors</option>
-          {doctorsList.map((d) => (
-            <option key={d.id} value={d.id}>Dr. {d.first_name} {d.last_name}</option>
-          ))}
-        </select>
+        {!isDoctor && (
+          <select value={doctorFilter} onChange={(e) => setDoctorFilter(e.target.value)}>
+            <option value="All Doctors">All Doctors</option>
+            {doctorsList.map((d) => (
+              <option key={d.id} value={d.id}>Dr. {d.first_name} {d.last_name}</option>
+            ))}
+          </select>
+        )}
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option value="All Statuses">All Statuses</option>
           {statusesList.map((s) => (
@@ -480,7 +515,9 @@ export default function Appointments() {
                         <div className="n">Dr. {selectedDoctor.first_name} {selectedDoctor.last_name}</div>
                         <div className="m">{selectedDoctor.specialization}</div>
                       </div>
-                      <button className="change" onClick={() => { setSelectedDoctor(null); setDoctorQuery('') }}>Change</button>
+                      {!isDoctor && (
+                        <button className="change" onClick={() => { setSelectedDoctor(null); setDoctorQuery('') }}>Change</button>
+                      )}
                     </div>
                   )}
                 </div>
