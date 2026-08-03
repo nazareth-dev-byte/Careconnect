@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../../supabaseClient'
+import { notifyCancellation } from '../../notify'
 
 export default function MyAppointments({ patientId }) {
   const [rows, setRows] = useState([])
@@ -19,7 +20,11 @@ export default function MyAppointments({ patientId }) {
   useEffect(() => { load() }, [load])
 
   const cancel = async (id) => {
+    const target = rows.find((r) => r.id === id)
     await supabase.from('appointments').update({ status: 'Cancelled' }).eq('id', id)
+    if (target) {
+      notifyCancellation({ appointmentId: id, date: target.appointment_date, time: target.appointment_time?.slice(0, 5) })
+    }
     load()
   }
 
