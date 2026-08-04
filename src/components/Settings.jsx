@@ -2,17 +2,16 @@ import React, { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabaseClient'
 
 const NOTIFICATION_TOGGLES_DEF = [
-  { key: 'booking_confirmations', name: 'Booking confirmations', desc: 'Email + SMS sent when a patient books online' },
-  { key: 'reminders_24h', name: '24-hour reminders', desc: 'Automated reminder sent the day before a visit' },
-  { key: 'cancellation_alerts', name: 'Cancellation alerts', desc: 'Notify front desk when a patient cancels' },
-  { key: 'lab_result_flags', name: 'Lab result flags', desc: 'Notify the assigned doctor of abnormal results' },
+  { key: 'booking_confirmations', name: 'Booking confirmations', desc: 'Notifies the patient in-app when they book online' },
+  { key: 'reminders_24h', name: '24-hour reminders', desc: 'Not yet available — needs a scheduled job, not built' },
+  { key: 'cancellation_alerts', name: 'Cancellation alerts', desc: 'Notifies front desk in-app when a patient cancels' },
+  { key: 'lab_result_flags', name: 'Lab result flags', desc: 'Not yet available — no lab-result data exists yet' },
 ]
 
 const ASSIGNABLE_ROLES = ['Patient', 'Doctor', 'Receptionist', 'Admin']
 const IS_ADMIN_TIER = (role) => role === 'Admin' || role === 'Receptionist'
+const ADD_NEW_DOCTOR = '__add_new__'
 
-// role is the REAL role, passed down from App.jsx after reading the `profiles` table.
-// It is never taken from auth user_metadata, which any signed-in user can edit themselves.
 export default function Settings({ role }) {
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
@@ -35,6 +34,9 @@ export default function Settings({ role }) {
   const [profilesList, setProfilesList] = useState([])
   const [doctorsList, setDoctorsList] = useState([])
   const [patientsList, setPatientsList] = useState([])
+
+  const [addingDoctorFor, setAddingDoctorFor] = useState(null) // profile id currently adding a new doctor for
+  const [newDoctorForm, setNewDoctorForm] = useState({ first_name: '', last_name: '', specialization: '' })
 
   const [statusMsg, setStatusMsg] = useState('')
   const [statusType, setStatusType] = useState('success')
@@ -68,7 +70,6 @@ export default function Settings({ role }) {
     }
   }
 
-  // Admin-tier only: real roster, sourced from profiles (the actual access-control table).
   const fetchRoster = async () => {
     if (!IS_ADMIN_TIER(role)) return
     const [{ data: profiles }, { data: docs }, { data: pats }] = await Promise.all([
@@ -114,8 +115,6 @@ export default function Settings({ role }) {
   const handleSaveProfile = async () => {
     setIsSaving(true)
     setStatusMsg('')
-    // Note: role is deliberately NOT included here. It lives in `profiles`, editable only
-    // by an Admin via the roster below — never by the account owner themselves.
     const { error } = await supabase.auth.updateUser({
       email,
       data: { full_name: fullName, phone },
@@ -170,7 +169,6 @@ export default function Settings({ role }) {
     })
   }
 
-  // The only place a role can change — Admin-tier writing to `profiles`, not the account owner.
   const handleSetRole = async (profileId, newRole) => {
     setIsSaving(true)
     const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', profileId)
@@ -179,8 +177,42 @@ export default function Settings({ role }) {
     else { setStatusType('success'); setStatusMsg('Role updated successfully.'); fetchRoster() }
   }
 
-  const handleLinkDoctor = async (profileId, doctorId) => {
+  const handleDoctorLinkChange = (profileId, value) => {
+    if (value === ADD_NEW_DOCTOR) {
+      setAddingDoctorFor(profileId)
+      setNewDoctorForm({ first_name: '', last_name: '', specialization: '' })
+      return
+    }
+    linkDoctor(profileId, value)
+  }
+
+  const linkDoctor = async (profileId, doctorId) => {
     await supabase.from('profiles').update({ doctor_id: doctorId || null }).eq('id', profileId)
+    fetchRoster()
+  }
+
+  const submitNewDoctor = async (profileId) => {
+    if (!newDoctorForm.first_name.trim() || !newDoctorForm.last_name.trim()) {
+      setStatusType('error'); setStatusMsg('First and last name are required for a new doctor.')
+      return
+    }
+    setIsSaving(true)
+    const { data: created, error } = await supabase
+      .from('doctors')
+      .insert([newDoctorForm])
+      .select()
+      .single()
+
+    if (error) {
+      setIsSaving(false)
+      setStatusType('error'); setStatusMsg(error.message)
+      return
+    }
+
+    await supabase.from('profiles').update({ doctor_id: created.id }).eq('id', profileId)
+    setIsSaving(false)
+    setAddingDoctorFor(null)
+    setStatusType('success'); setStatusMsg('New doctor created and linked.')
     fetchRoster()
   }
 
@@ -222,11 +254,11 @@ export default function Settings({ role }) {
         <div className="panel" id="Profile">
           <h2>Profile</h2>
           <div className="panel-sub">Your personal account details</div>
-          <div className="avatar-row">
+          <div className="avatar-row" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
             {avatarUrl ? (
               <img src={avatarUrl} alt="Profile" style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover' }} />
             ) : (
-              <div className="avatar-lg">{initials}</div>
+              <div className="avatar-lg" style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--teal, #1c8577)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>{initials}</div>
             )}
             <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept="image/*" onChange={handleAvatarUpload} />
             <button type="button" className="btn secondary" onClick={() => fileInputRef.current?.click()} disabled={isSaving}>
@@ -240,8 +272,6 @@ export default function Settings({ role }) {
             </div>
             <div className="field">
               <label>Role</label>
-              {/* Read-only, by design: role is access control and lives in `profiles`,
-                  set only by an Admin via Users & Roles below — never self-editable. */}
               <input type="text" value={role} disabled style={{ backgroundColor: '#f3f4f6', color: 'var(--muted)' }} />
             </div>
           </div>
@@ -327,7 +357,7 @@ export default function Settings({ role }) {
             <h2>Users &amp; Roles <span className="panel-sub" style={{ margin: 0 }}>(Admin only)</span></h2>
             <div className="panel-sub">
               Sourced from <code>profiles</code> — the only table that actually controls access. Emails aren't
-              shown here; this app has no service-role key to look them up from auth.users.
+              shown here for records with no email on file; this app has no service-role key to look them up from auth.users.
             </div>
             <table>
               <thead><tr><th>Linked record</th><th>Role</th><th>Doctor link</th></tr></thead>
@@ -342,10 +372,37 @@ export default function Settings({ role }) {
                     </td>
                     <td>
                       {p.role === 'Doctor' ? (
-                        <select value={p.doctor_id || ''} onChange={(e) => handleLinkDoctor(p.id, e.target.value)}>
-                          <option value="">Link to doctor…</option>
-                          {doctorsList.map((d) => <option key={d.id} value={d.id}>Dr. {d.first_name} {d.last_name}</option>)}
-                        </select>
+                        addingDoctorFor === p.id ? (
+                          <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
+                            <input
+                              type="text" placeholder="First name" style={{ width: 90, fontSize: 12, padding: '4px 6px' }}
+                              value={newDoctorForm.first_name}
+                              onChange={(e) => setNewDoctorForm({ ...newDoctorForm, first_name: e.target.value })}
+                            />
+                            <input
+                              type="text" placeholder="Last name" style={{ width: 90, fontSize: 12, padding: '4px 6px' }}
+                              value={newDoctorForm.last_name}
+                              onChange={(e) => setNewDoctorForm({ ...newDoctorForm, last_name: e.target.value })}
+                            />
+                            <input
+                              type="text" placeholder="Specialization" style={{ width: 100, fontSize: 12, padding: '4px 6px' }}
+                              value={newDoctorForm.specialization}
+                              onChange={(e) => setNewDoctorForm({ ...newDoctorForm, specialization: e.target.value })}
+                            />
+                            <button type="button" className="btn primary" style={{ padding: '4px 8px', fontSize: 11.5 }} onClick={() => submitNewDoctor(p.id)} disabled={isSaving}>
+                              Save
+                            </button>
+                            <button type="button" className="btn secondary" style={{ padding: '4px 8px', fontSize: 11.5 }} onClick={() => setAddingDoctorFor(null)}>
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <select value={p.doctor_id || ''} onChange={(e) => handleDoctorLinkChange(p.id, e.target.value)}>
+                            <option value="">Link to doctor…</option>
+                            <option value={ADD_NEW_DOCTOR}>+ Add new doctor…</option>
+                            {doctorsList.map((d) => <option key={d.id} value={d.id}>Dr. {d.first_name} {d.last_name}</option>)}
+                          </select>
+                        )
                       ) : (
                         <span style={{ color: 'var(--muted)', fontSize: 12 }}>—</span>
                       )}
