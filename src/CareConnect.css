@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@600&family=IBM+Plex+Mono:wght@500&display=swap');
+
 :root {
   --ink: #16342f;
   --paper: #f6f8f7;
@@ -6,6 +8,7 @@
   --teal: #2f6f68;
   --teal-deep: #1c4b45;
   --teal-light: #7fb8b0;
+  --sage: #7fb8ac;
   --teal-soft: #e6f3f1;
   --amber: #c9822b;
   --red: #b5432f;
