@@ -19,64 +19,8 @@ function roleMatches(role, portal) {
   return role === portal
 }
 
-export default function AuthFlow({ onAuthed }) {
-  const [step, setStep] = useState('picker') // picker | form
-  const [userType, setUserType] = useState('existing') // existing | new
-  const [portal, setPortal] = useState(null) // Patient | Doctor | Admin
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [mismatch, setMismatch] = useState(null) // holds the real profile row when it doesn't match the pick
-
-  // Ensures a profiles row exists even if there's no DB trigger creating one on signup.
-  const ensureProfile = async (userId) => {
-    const { data: existing } = await supabase.from('profiles').select('*').eq('id', userId).single()
-    if (existing) return existing
-    const { data: created, error: createErr } = await supabase
-      .from('profiles')
-      .insert([{ id: userId, role: 'Patient', email: (await supabase.auth.getUser()).data.user.email }])
-      .select()
-      .single()
-    if (createErr) throw createErr
-    return created
-  }
-
-  const resetToLanding = () => {
-    setStep('picker'); setUserType('existing'); setPortal(null); setMismatch(null); setError('')
-  }
-
-  const chooseTab = (type) => {
-    setUserType(type); setPortal(null); setStep('picker'); setError('')
-  }
-
-  const submit = async (e) => {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
-    try {
-      if (userType === 'existing') {
-        const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password })
-        if (signInError) throw signInError
-        const profile = await ensureProfile(data.user.id)
-        roleMatches(profile.role, portal) ? onAuthed(profile) : setMismatch(profile)
-      } else {
-        const { data, error: signUpError } = await supabase.auth.signUp({ email, password })
-        if (signUpError) throw signUpError
-        if (!data.session) {
-          setError('Check your inbox to confirm your address, then sign in.')
-        } else {
-          const profile = await ensureProfile(data.user.id)
-          roleMatches(profile.role, portal) ? onAuthed(profile) : setMismatch(profile)
-        }
-      }
-    } catch (err) {
-      setError(err.message)
-    }
-    setLoading(false)
-  }
-
-  const Shell = ({ children }) => (
+function Shell({ children, userType, chooseTab }) {
+  return (
     <div className="auth-page">
       <div className="auth-left">
         <div className="auth-brand">
@@ -225,10 +169,68 @@ export default function AuthFlow({ onAuthed }) {
       `}</style>
     </div>
   )
+}
+
+export default function AuthFlow({ onAuthed }) {
+  const [step, setStep] = useState('picker') // picker | form
+  const [userType, setUserType] = useState('existing') // existing | new
+  const [portal, setPortal] = useState(null) // Patient | Doctor | Admin
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [mismatch, setMismatch] = useState(null) // holds the real profile row when it doesn't match the pick
+
+  // Ensures a profiles row exists even if there's no DB trigger creating one on signup.
+  const ensureProfile = async (userId) => {
+    const { data: existing } = await supabase.from('profiles').select('*').eq('id', userId).single()
+    if (existing) return existing
+    const { data: created, error: createErr } = await supabase
+      .from('profiles')
+      .insert([{ id: userId, role: 'Patient', email: (await supabase.auth.getUser()).data.user.email }])
+      .select()
+      .single()
+    if (createErr) throw createErr
+    return created
+  }
+
+  const resetToLanding = () => {
+    setStep('picker'); setUserType('existing'); setPortal(null); setMismatch(null); setError('')
+  }
+
+  const chooseTab = (type) => {
+    setUserType(type); setPortal(null); setStep('picker'); setError('')
+  }
+
+  const submit = async (e) => {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+    try {
+      if (userType === 'existing') {
+        const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+        if (signInError) throw signInError
+        const profile = await ensureProfile(data.user.id)
+        roleMatches(profile.role, portal) ? onAuthed(profile) : setMismatch(profile)
+      } else {
+        const { data, error: signUpError } = await supabase.auth.signUp({ email, password })
+        if (signUpError) throw signUpError
+        if (!data.session) {
+          setError('Check your inbox to confirm your address, then sign in.')
+        } else {
+          const profile = await ensureProfile(data.user.id)
+          roleMatches(profile.role, portal) ? onAuthed(profile) : setMismatch(profile)
+        }
+      }
+    } catch (err) {
+      setError(err.message)
+    }
+    setLoading(false)
+  }
 
   if (mismatch) {
     return (
-      <Shell>
+      <Shell userType={userType} chooseTab={chooseTab}>
         <h2 className="auth-title">Role mismatch</h2>
         <p className="auth-sub">
           You picked <b style={{ cursor: 'default', color: 'var(--ink)' }}>{portal}</b>, but this account is currently a <b style={{ cursor: 'default', color: 'var(--ink)' }}>{mismatch.role}</b>.
@@ -250,7 +252,7 @@ export default function AuthFlow({ onAuthed }) {
   }
 
   return (
-    <Shell>
+    <Shell userType={userType} chooseTab={chooseTab}>
       {step === 'picker' && (
         <div>
           <div className="auth-eyebrow"><span className="dot" />{userType === 'existing' ? 'Welcome back' : "Let's get you set up"}</div>
